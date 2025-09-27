@@ -11,5 +11,6 @@ wheels/
 /.vscode/
 dist/
 .venv
+*.mmd
 .env
 *.log
