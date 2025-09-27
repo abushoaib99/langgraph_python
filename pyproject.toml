@@ -1,0 +1,10 @@
+[project]
+name = "langgraph-python"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain>=0.3.27",
+    "langchain-google-genai>=2.1.12",
+    "langgraph==0.6.7",
+    "python-decouple==3.8",
+]
