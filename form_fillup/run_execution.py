@@ -5,14 +5,15 @@ from typing import Any, Optional, TypedDict
 from langgraph.constants import START
 from langgraph.graph import StateGraph, END
 
-from form_fillup.form_schema import schema
+from form_fillup.extract_eform_fields import get_eform_variables
 from form_fillup.model import llm
 
 
 # Define the state structure for the workflow
 class FormFillingState(TypedDict):
     """State object that gets passed between nodes in the workflow"""
-    form_schema: dict[str, Any]
+    eform_id: int
+    form_schema: list
     user_context: str
     success: bool
     extracted_data: Optional[dict[str, Any]]
@@ -33,19 +34,28 @@ class FormAutomationWorkflow:
         workflow = StateGraph(FormFillingState)
 
         # Add nodes
+        workflow.add_node("get_eform_variables", self._get_eform_variables)
         workflow.add_node("validate_inputs", self._validate_inputs)
         workflow.add_node("extract_data", self._extract_data)
         workflow.add_node("check_required", self._check_required)
         workflow.add_node("ask_missing", self._ask_missing)
 
         # Add edges
-        workflow.add_edge(START, "validate_inputs")
+        workflow.add_edge(START, "get_eform_variables")
+        workflow.add_edge("get_eform_variables", "validate_inputs")
         workflow.add_edge("validate_inputs", "extract_data")
         workflow.add_edge("extract_data", "check_required")
         workflow.add_edge("check_required", "ask_missing")
         workflow.add_edge("ask_missing", END)
 
         return workflow.compile()
+
+    def _get_eform_variables(self, state: FormFillingState) -> FormFillingState:
+        eform_id = state["eform_id"]
+        variables = get_eform_variables(eform_id=eform_id)
+        state["form_schema"] = variables
+
+        return state
 
     def _validate_inputs(self, state: FormFillingState) -> FormFillingState:
         """Validate that we have the required inputs"""
@@ -132,20 +142,9 @@ User context:
                 state["extracted_data"][f["id"]] = value
         return state
 
-    def process_form(self, form_schema: dict[str, Any], user_context: str) -> dict[str, Any]:
-        """
-        Main method to process form filling request
-
-        Args:
-            form_schema: Dictionary containing form structure
-            user_context: Natural language text with information to extract
-            max_retries: Maximum number of retry attempts
-
-        Returns:
-            Dictionary with extraction results
-        """
+    def process_form(self, eform_id: int, user_context: str) -> dict[str, Any]:
         initial_state = FormFillingState(
-            form_schema=form_schema,
+            eform_id=eform_id,
             user_context=user_context,
             extracted_data=None
         )
@@ -185,7 +184,7 @@ def example_usage():
     """
 
     # Process the form
-    result = workflow.process_form(schema, user_context)
+    result = workflow.process_form(1193, user_context)
 
     print("Form Filling Result:")
     print(json.dumps(result, indent=2))

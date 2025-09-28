@@ -6,5 +6,6 @@ dependencies = [
     "langchain>=0.3.27",
     "langchain-google-genai>=2.1.12",
     "langgraph==0.6.7",
+    "psycopg2-binary>=2.9.10",
     "python-decouple==3.8",
 ]

@@ -5,14 +5,16 @@ config:
 ---
 graph TD;
 	__start__([<p>__start__</p>]):::first
+	get_eform_variables(get_eform_variables)
 	validate_inputs(validate_inputs)
 	extract_data(extract_data)
 	check_required(check_required)
 	ask_missing(ask_missing)
 	__end__([<p>__end__</p>]):::last
-	__start__ --> validate_inputs;
+	__start__ --> get_eform_variables;
 	check_required --> ask_missing;
 	extract_data --> check_required;
+	get_eform_variables --> validate_inputs;
 	validate_inputs --> extract_data;
 	ask_missing --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
