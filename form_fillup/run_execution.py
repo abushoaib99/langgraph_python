@@ -18,6 +18,7 @@ class FormFillingState(TypedDict):
     success: bool
     extracted_data: Optional[dict[str, Any]]
     missing_required_fields: Optional[list[str]]
+    validation_errors: list
 
 
 class FormAutomationWorkflow:
@@ -50,14 +51,16 @@ class FormAutomationWorkflow:
 
         return workflow.compile()
 
-    def _get_eform_variables(self, state: FormFillingState) -> FormFillingState:
+    @staticmethod
+    def _get_eform_variables(state: FormFillingState) -> FormFillingState:
         eform_id = state["eform_id"]
         variables = get_eform_variables(eform_id=eform_id)
         state["form_schema"] = variables
 
         return state
 
-    def _validate_inputs(self, state: FormFillingState) -> FormFillingState:
+    @staticmethod
+    def _validate_inputs(state: FormFillingState) -> FormFillingState:
         """Validate that we have the required inputs"""
         if not state.get("form_schema"):
             raise ValueError("Form schema is required")
@@ -66,7 +69,8 @@ class FormAutomationWorkflow:
 
         return state
 
-    def _extract_data(self, state: FormFillingState) -> FormFillingState:
+    @staticmethod
+    def _extract_data(state: FormFillingState) -> FormFillingState:
         """Extract data from user context using LLM"""
 
         form_schema = state["form_schema"]
@@ -110,7 +114,6 @@ User context:
             # Parse the JSON response
             extracted_data = json.loads(content.strip())
             state["extracted_data"] = extracted_data
-            state["success"] = True
 
         except json.JSONDecodeError as e:
             state["validation_errors"] = [f"Invalid JSON response from LLM: {str(e)}"]
@@ -119,7 +122,8 @@ User context:
 
         return state
 
-    def _check_required(self, state: FormFillingState) -> FormFillingState:
+    @staticmethod
+    def _check_required(state: FormFillingState) -> FormFillingState:
         extracted_data = state["extracted_data"]
         form_schema = state["form_schema"]
         missing = []
@@ -132,7 +136,8 @@ User context:
         state["missing_required_fields"] = missing
         return state
 
-    def _ask_missing(self, state: FormFillingState) -> FormFillingState:
+    @staticmethod
+    def _ask_missing(state: FormFillingState) -> FormFillingState:
         missing = state.get("missing_required_fields", [])
         if missing:
             print("The following required fields are missing:")
@@ -154,7 +159,10 @@ User context:
 
         # Return appropriate response
         if result.get("extracted_data"):
-            return result["extracted_data"]
+            return {
+                "success": True,
+                "extracted_data": result.get("extracted_data"),
+            }
         else:
             return {
                 "success": False,
@@ -174,7 +182,7 @@ def example_usage():
         f.write(workflow.workflow.get_graph().draw_mermaid())
 
     # Example user context
-    user_context = """Set up a new Capex. Want to buy a Laptop, Estimated amount 120000. For Develompent purpose.
+    user_context = """Set up a new Capex. Want to buy a Laptop, Estimated amount 120000. For Development purpose.
     If buy a new laptop then development speed will be faster. Without the laptop current activities is hampering. No alternative purchase.
     He mentioned he needs priority support. Need urgent basis.
     Unit Name: Innoweb
